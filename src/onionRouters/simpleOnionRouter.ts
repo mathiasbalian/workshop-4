@@ -1,6 +1,8 @@
 import bodyParser from "body-parser";
 import express from "express";
-import { BASE_ONION_ROUTER_PORT } from "../config";
+import {BASE_ONION_ROUTER_PORT, REGISTRY_PORT} from "../config";
+import {Node} from "../registry/registry";
+import {exportPrvKey, exportPubKey, generateRsaKeyPair} from "../crypto";
 
 let lastReceivedEncryptedMessage: string | null = null;
 let lastReceivedDecryptedMessage: string | null = null;
@@ -10,6 +12,12 @@ export async function simpleOnionRouter(nodeId: number) {
   const onionRouter = express();
   onionRouter.use(express.json());
   onionRouter.use(bodyParser.json());
+
+  let rsaKeyPair = await generateRsaKeyPair();
+  let pubKey = await exportPubKey(rsaKeyPair.publicKey);
+  let privateKey = await exportPrvKey(rsaKeyPair.privateKey);
+
+  let node: Node = { nodeId: nodeId, pubKey: pubKey };
 
   // TODO implement the status route
   onionRouter.get("/status", (req, res) => {
@@ -28,6 +36,9 @@ export async function simpleOnionRouter(nodeId: number) {
     res.status(200).json({result: lastMessageDestination});
   });
 
+  onionRouter.get("/getPrivateKey", async (req, res) => {
+    res.status(200).json({result: privateKey});
+  });
 
 
   const server = onionRouter.listen(BASE_ONION_ROUTER_PORT + nodeId, () => {
@@ -37,6 +48,18 @@ export async function simpleOnionRouter(nodeId: number) {
       }`
     );
   });
+
+  await fetch(`http://localhost:${REGISTRY_PORT}/registerNode`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      nodeId: nodeId,
+      pubKey: pubKey,
+    })
+  });
+
 
   return server;
 }
