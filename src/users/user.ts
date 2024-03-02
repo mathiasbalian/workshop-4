@@ -62,7 +62,7 @@ export async function user(userId: number) {
     for(const node of circuit) {
       const symmetricKey = await createRandomSymmetricKey();
       const symmetricKey64 = await exportSymKey(symmetricKey);
-      const encryptedMessage = await symEncrypt(symmetricKey, destination + finalMessage);
+      const encryptedMessage = await symEncrypt(symmetricKey, `${destination + finalMessage}`);
       destination = `${BASE_ONION_ROUTER_PORT + node.nodeId}`.padStart(10, '0');
       const encryptedSymKey = await rsaEncrypt(symmetricKey64, node.pubKey);
       finalMessage = encryptedSymKey + encryptedMessage;
